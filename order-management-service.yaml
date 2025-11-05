@@ -1,0 +1,815 @@
+openapi: 3.0.3
+info:
+  title: Order Management API
+  description: |
+    Order Management Service for the Cloud-Native Inventory & Stock Management System.
+    Responsibilities: accept orders from sales channels, validate items, reserve/deduct stock,
+    manage order lifecycle, and emit/order events.
+  version: "1.0.0"
+servers:
+  - url: https://orders.example.com/api/v1
+    description: Production server
+  - url: https://staging-orders.example.com/api/v1
+    description: Staging server
+tags:
+  - name: orders
+    description: Order lifecycle endpoints
+  - name: items
+    description: Order items management
+  - name: webhooks
+    description: Webhook registration and management
+  - name: audit
+    description: Auditing endpoints
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    orderId:
+      name: orderId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Order UUID
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number (1-based)
+    size:
+      name: size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 25
+      description: Page size
+    sort:
+      name: sort
+      in: query
+      schema:
+        type: string
+        example: created_at:desc
+      description: Sort expression (field:asc|desc)
+    status:
+      name: status
+      in: query
+      schema:
+        type: string
+        example: RESERVED
+      description: Filter by order status
+    XRequestID:
+      name: X-Request-ID
+      in: header
+      schema:
+        type: string
+      description: Optional request id for tracing
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      schema:
+        type: string
+      description: Idempotency key for safe retries (create operations)
+    IfMatch:
+      name: If-Match
+      in: header
+      schema:
+        type: string
+      description: Version token for optimistic concurrency (e.g., "3")
+  schemas:
+    ErrorDetail:
+      type: object
+      properties:
+        field:
+          type: string
+        error:
+          type: string
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: VALIDATION_ERROR
+        message:
+          type: string
+          example: Invalid request payload
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+        request_id:
+          type: string
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+        size:
+          type: integer
+        total:
+          type: integer
+        next_page:
+          type: string
+    Address:
+      type: object
+      required: [name, address1, city, country]
+      properties:
+        name:
+          type: string
+          example: "John Doe"
+        address1:
+          type: string
+          example: "123 Main St"
+        address2:
+          type: string
+          example: "Building 5, Apt 3"
+        city:
+          type: string
+          example: "Colombo"
+        postal_code:
+          type: string
+          example: "00000"
+        state:
+          type: string
+        country:
+          type: string
+          example: "LK"
+        phone:
+          type: string
+    OrderItem:
+      type: object
+      required: [sku, quantity, unit_price]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        sku:
+          type: string
+          example: "SKU-ABC-123"
+        product_id:
+          type: string
+          format: uuid
+          nullable: true
+        quantity:
+          type: integer
+          minimum: 1
+          example: 2
+        unit_price:
+          type: number
+          format: float
+          example: 199.99
+        total_price:
+          type: number
+          format: float
+          readOnly: true
+        meta:
+          type: object
+          additionalProperties: true
+    Totals:
+      type: object
+      properties:
+        subtotal:
+          type: number
+          format: float
+        tax:
+          type: number
+          format: float
+        shipping:
+          type: number
+          format: float
+        discounts:
+          type: number
+          format: float
+        grand_total:
+          type: number
+          format: float
+    Order:
+      type: object
+      required: [id, status, items, totals, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        reference:
+          type: string
+          example: "WEB-20251027-0001"
+        status:
+          type: string
+          description: |
+            One of DRAFT, PENDING, RESERVED, FULFILLING, SHIPPED, COMPLETED, CANCELLED
+          example: RESERVED
+        customer_id:
+          type: string
+        sales_channel:
+          type: string
+          example: web
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        totals:
+          $ref: '#/components/schemas/Totals'
+        shipping_address:
+          $ref: '#/components/schemas/Address'
+        billing_info:
+          type: object
+          additionalProperties: true
+        notes:
+          type: string
+        preferred_warehouse_id:
+          type: string
+          format: uuid
+          nullable: true
+        reservation_id:
+          type: string
+          format: uuid
+          nullable: true
+        version:
+          type: integer
+          example: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateOrderRequest:
+      type: object
+      required: [items]
+      properties:
+        customer_id:
+          type: string
+        sales_channel:
+          type: string
+          example: web
+        reference:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        shipping_address:
+          $ref: '#/components/schemas/Address'
+        billing_info:
+          type: object
+          additionalProperties: true
+        notes:
+          type: string
+        preferred_warehouse_id:
+          type: string
+          format: uuid
+        reserve_on_place:
+          type: boolean
+          description: If true, service will attempt to reserve inventory during create
+          default: true
+    PatchOrderRequest:
+      type: object
+      properties:
+        shipping_address:
+          $ref: '#/components/schemas/Address'
+        notes:
+          type: string
+        version:
+          type: integer
+    UpdateStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: FULFILLING
+        reason:
+          type: string
+        warehouse_id:
+          type: string
+          format: uuid
+        tracking_number:
+          type: string
+    WebhookRegistration:
+      type: object
+      required: [url, events, secret]
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        url:
+          type: string
+          format: uri
+          example: "https://merchant.example.com/webhooks/orders"
+        events:
+          type: array
+          items:
+            type: string
+            enum:
+              - order.created
+              - order.reservation_requested
+              - order.reserved
+              - order.reservation_failed
+              - order.fulfillment.started
+              - order.shipped
+              - order.completed
+              - order.cancelled
+        secret:
+          type: string
+          description: HMAC secret used to sign webhook payloads
+        created_at:
+          type: string
+          format: date-time
+    AuditEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        actor:
+          type: string
+        action:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+        timestamp:
+          type: string
+          format: date-time
+    OrdersListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    SuccessMessage:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "ok"
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+paths:
+  /orders:
+    post:
+      tags:
+        - orders
+      summary: Create a new order
+      description: |
+        Create an order. Supports `Idempotency-Key` to deduplicate retries.
+        By default attempts to reserve inventory for each item (configurable by `reserve_on_place`).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/XRequestID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '200':
+          description: Order already created for Idempotency-Key (idempotent retry)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/Unauthorized' # reuse shape but message differ - kept simple
+        '422':
+          description: Unprocessable Entity (validation or business rule)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - orders
+      summary: List orders (paginated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+        - $ref: '#/components/parameters/sort'
+        - $ref: '#/components/parameters/status'
+        - name: customer_id
+          in: query
+          schema:
+            type: string
+        - name: sales_channel
+          in: query
+          schema:
+            type: string
+        - name: from_date
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to_date
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Paginated list of orders
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrdersListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /orders/{orderId}:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    get:
+      tags:
+        - orders
+      summary: Get order by id
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Order object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    patch:
+      tags:
+        - orders
+      summary: Update order metadata (address, notes)
+      description: |
+        Update mutable fields such as shipping_address or notes.
+        Use `If-Match` for optimistic concurrency (version).
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchOrderRequest'
+      responses:
+        '200':
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - orders
+      summary: Delete order (admin only)
+      description: Soft-delete an order (admin only). Prefer cancellation via POST /cancel for normal flows.
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/{orderId}/items:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    post:
+      tags:
+        - items
+      summary: Add items to an order
+      description: |
+        Add new items to an order. Allowed in DRAFT or PENDING states by default.
+        Adding items will re-run inventory validation/reservation.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/OrderItem'
+      responses:
+        '200':
+          description: Items added and order updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '422':
+          description: Cannot add items in current order state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/{orderId}/items/{itemId}:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+      - name: itemId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    put:
+      tags:
+        - items
+      summary: Update an order item (quantity, unit_price)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderItem'
+      responses:
+        '200':
+          description: Item updated and order recalculated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          description: Conflict (e.g., reservation mismatch)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    delete:
+      tags:
+        - items
+      summary: Remove an item from an order
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Item removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '422':
+          description: Cannot remove item in current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/{orderId}/status:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    post:
+      tags:
+        - orders
+      summary: Update order status (fulfillment lifecycle)
+      description: |
+        Change the order status. Validates allowed transitions and triggers side-effects
+        (inventory release/reserve, publish events).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusRequest'
+      responses:
+        '200':
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          description: Invalid transition or conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          description: Business rule violation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/{orderId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    post:
+      tags:
+        - orders
+      summary: Cancel an order (convenience)
+      description: Cancels the order and releases reserved inventory if applicable.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Order cancelled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '409':
+          description: Cannot cancel in current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /orders/{orderId}/audit:
+    parameters:
+      - $ref: '#/components/parameters/orderId'
+    get:
+      tags:
+        - audit
+      summary: Get audit trail for an order (admin)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of audit entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEntry'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /webhooks:
+    post:
+      tags:
+        - webhooks
+      summary: Register a webhook
+      description: Register a webhook endpoint to receive order events. Endpoint will be validated.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookRegistration'
+      responses:
+        '201':
+          description: Webhook registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookRegistration'
+        '400':
+          description: Invalid webhook config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    get:
+      tags:
+        - webhooks
+      summary: List registered webhooks
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Webhooks list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  webhooks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/WebhookRegistration'
+  /webhooks/{webhookId}:
+    parameters:
+      - name: webhookId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      tags:
+        - webhooks
+      summary: Remove a webhook registration
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Webhook removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /internal/events/publish:
+    post:
+      tags:
+        - orders
+      summary: Internal - publish an event to the message bus
+      description: Internal endpoint used by the service to publish domain events (not for public use).
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [event_type, payload]
+              properties:
+                event_type:
+                  type: string
+                occurred_at:
+                  type: string
+                  format: date-time
+                payload:
+                  type: object
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+# Example servers and info for clients
+x-api-notes:
+  - "Idempotency: Use Idempotency-Key for POST /orders to avoid duplicate orders on retries."
+  - "Optimistic concurrency: Use If-Match header when patching/updating to avoid lost updates."
+  - "Events: The service emits order.* events to a message bus (Kafka/RabbitMQ) and optionally webhooks to registered URLs."
+

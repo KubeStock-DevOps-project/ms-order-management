@@ -1,0 +1,37 @@
+{
+  "name": "order-management-service",
+  "version": "1.0.0",
+  "description": "Order Management Service (Express.js) implementing the provided OpenAPI spec",
+  "main": "src/app.js",
+  "scripts": {
+    "db:push": "prisma db push",
+    "prisma:generate": "prisma generate",
+    "start": "prisma db push && node src/app.js",
+    "dev": "nodemon src/app.js",
+    "postinstall": "prisma generate"
+  },
+  "keywords": [
+    "express",
+    "orders",
+    "openapi",
+    "swagger"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "swagger-ui-express": "^5.0.1",
+    "yamljs": "^0.3.0",
+    "express-openapi-validator": "^5.4.4",
+    "uuid": "^9.0.1",
+    "morgan": "^1.10.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "dotenv": "^16.4.5",
+    "@prisma/client": "^5.19.1",
+    "prisma": "^5.19.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}
