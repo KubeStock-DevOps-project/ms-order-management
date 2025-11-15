@@ -3,8 +3,8 @@ const ordersService = require("../services/orders.service");
 
 const router = express.Router();
 
-// POST /orders - create
-router.post("/orders", async (req, res, next) => {
+// POST / - create
+router.post("/", async (req, res, next) => {
   try {
     const idemKey = req.header("Idempotency-Key");
     const { order, existed } = await ordersService.createOrder(
@@ -17,8 +17,8 @@ router.post("/orders", async (req, res, next) => {
   }
 });
 
-// GET /orders - list
-router.get("/orders", async (req, res, next) => {
+// GET / - list
+router.get("/", async (req, res, next) => {
   try {
     const page = Math.max(1, parseInt(req.query.page || "1", 10));
     const size = Math.max(
@@ -45,8 +45,8 @@ router.get("/orders", async (req, res, next) => {
   }
 });
 
-// GET /orders/{orderId}
-router.get("/orders/:orderId", async (req, res, next) => {
+// GET /{orderId}
+router.get("/:orderId", async (req, res, next) => {
   try {
     const order = await ordersService.getOrderById(req.params.orderId);
     if (!order)
@@ -59,8 +59,8 @@ router.get("/orders/:orderId", async (req, res, next) => {
   }
 });
 
-// PATCH /orders/{orderId}
-router.patch("/orders/:orderId", async (req, res, next) => {
+// PATCH /{orderId}
+router.patch("/:orderId", async (req, res, next) => {
   try {
     const ifMatch = req.header("If-Match");
     const order = await ordersService.patchOrder(
@@ -74,8 +74,8 @@ router.patch("/orders/:orderId", async (req, res, next) => {
   }
 });
 
-// DELETE /orders/{orderId}
-router.delete("/orders/:orderId", async (req, res, next) => {
+// DELETE /{orderId}
+router.delete("/:orderId", async (req, res, next) => {
   try {
     await ordersService.deleteOrder(req.params.orderId);
     return res.sendStatus(204);
@@ -84,8 +84,8 @@ router.delete("/orders/:orderId", async (req, res, next) => {
   }
 });
 
-// POST /orders/{orderId}/items
-router.post("/orders/:orderId/items", async (req, res, next) => {
+// POST /{orderId}/items
+router.post("/:orderId/items", async (req, res, next) => {
   try {
     const updated = await ordersService.addItems(
       req.params.orderId,
@@ -97,8 +97,8 @@ router.post("/orders/:orderId/items", async (req, res, next) => {
   }
 });
 
-// PUT /orders/{orderId}/items/{itemId}
-router.put("/orders/:orderId/items/:itemId", async (req, res, next) => {
+// PUT /{orderId}/items/{itemId}
+router.put("/:orderId/items/:itemId", async (req, res, next) => {
   try {
     const updated = await ordersService.updateItem(
       req.params.orderId,
@@ -111,8 +111,8 @@ router.put("/orders/:orderId/items/:itemId", async (req, res, next) => {
   }
 });
 
-// DELETE /orders/{orderId}/items/{itemId}
-router.delete("/orders/:orderId/items/:itemId", async (req, res, next) => {
+// DELETE /{orderId}/items/{itemId}
+router.delete("/:orderId/items/:itemId", async (req, res, next) => {
   try {
     const updated = await ordersService.removeItem(
       req.params.orderId,
@@ -124,8 +124,8 @@ router.delete("/orders/:orderId/items/:itemId", async (req, res, next) => {
   }
 });
 
-// POST /orders/{orderId}/status
-router.post("/orders/:orderId/status", async (req, res, next) => {
+// POST /{orderId}/status
+router.post("/:orderId/status", async (req, res, next) => {
   try {
     const order = await ordersService.updateStatus(
       req.params.orderId,
@@ -137,8 +137,8 @@ router.post("/orders/:orderId/status", async (req, res, next) => {
   }
 });
 
-// POST /orders/{orderId}/cancel
-router.post("/orders/:orderId/cancel", async (req, res, next) => {
+// POST /{orderId}/cancel
+router.post("/:orderId/cancel", async (req, res, next) => {
   try {
     const order = await ordersService.cancelOrder(
       req.params.orderId,
@@ -150,8 +150,8 @@ router.post("/orders/:orderId/cancel", async (req, res, next) => {
   }
 });
 
-// GET /orders/{orderId}/audit
-router.get("/orders/:orderId/audit", async (req, res, next) => {
+// GET /{orderId}/audit
+router.get("/:orderId/audit", async (req, res, next) => {
   try {
     const result = await ordersService.getAudit(req.params.orderId);
     return res.json(result);
