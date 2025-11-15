@@ -1,4 +1,4 @@
-const express = require("express");
+import express from "express";
 
 const router = express.Router();
 
@@ -9,4 +9,4 @@ router.post("/events/publish", (req, res) => {
   return res.status(202).json({ message: "ok" });
 });
 
-module.exports = router;
+export const internalRouter = router;

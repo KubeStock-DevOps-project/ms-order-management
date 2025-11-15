@@ -1,7 +1,7 @@
-const { v4: uuidv4 } = require("uuid");
-const prisma = require("../prisma");
-const { computeTotals } = require("../utils/totals");
-const { toApiOrder } = require("../utils/mappers");
+import { v4 as uuidv4 } from "uuid";
+import { prisma } from "../prisma.js";
+import { toApiOrder } from "../utils/mappers.js";
+import { computeTotals } from "../utils/totals.js";
 
 const ORDER_STATES = [
   "DRAFT",
@@ -14,7 +14,7 @@ const ORDER_STATES = [
 ];
 const TERMINAL = new Set(["CANCELLED", "COMPLETED"]);
 
-function allowedTransition(from, to) {
+export const allowedTransition = (from, to) => {
   const map = {
     DRAFT: ["PENDING", "CANCELLED"],
     PENDING: ["RESERVED", "CANCELLED"],
@@ -25,9 +25,9 @@ function allowedTransition(from, to) {
     CANCELLED: [],
   };
   return (map[from] || []).includes(to);
-}
+};
 
-async function getOrderById(orderId) {
+export const getOrderById = async (orderId) => {
   const order = await prisma.order.findFirst({
     where: { id: orderId, deleted: false },
   });
@@ -37,9 +37,9 @@ async function getOrderById(orderId) {
     orderBy: { id: "asc" },
   });
   return toApiOrder(order, items);
-}
+};
 
-async function listOrders(params) {
+export const listOrders = async (params) => {
   const { page = 1, size = 25, sort, filters = {} } = params;
   const where = { deleted: false };
   if (filters.status) where.status = filters.status;
@@ -78,9 +78,9 @@ async function listOrders(params) {
       next_page: page * size < total ? String(page + 1) : null,
     },
   };
-}
+};
 
-async function createOrder(body, idemKey) {
+export const createOrder = async (body, idemKey) => {
   if (idemKey) {
     const existing = await prisma.idempotencyKey.findFirst({
       where: { key: idemKey },
@@ -156,9 +156,9 @@ async function createOrder(body, idemKey) {
 
   const order = await getOrderById(orderId);
   return { order, existed: false };
-}
+};
 
-async function patchOrder(id, data, ifMatch) {
+export const patchOrder = async (id, data, ifMatch) => {
   const existing = await prisma.order.findFirst({
     where: { id, deleted: false },
     select: { version: true },
@@ -194,9 +194,9 @@ async function patchOrder(id, data, ifMatch) {
     },
   });
   return getOrderById(id);
-}
+};
 
-async function deleteOrder(id) {
+export const deleteOrder = async (id) => {
   await prisma.order
     .update({ where: { id }, data: { deleted: true, updatedAt: new Date() } })
     .catch(() => null);
@@ -211,9 +211,9 @@ async function deleteOrder(id) {
       },
     })
     .catch(() => null);
-}
+};
 
-async function ensureModifiable(orderId, allowed, codeMsg) {
+export const ensureModifiable = async (orderId, allowed, codeMsg) => {
   const ord = await prisma.order.findFirst({
     where: { id: orderId, deleted: false },
     select: { status: true },
@@ -228,9 +228,9 @@ async function ensureModifiable(orderId, allowed, codeMsg) {
     e.status = 422;
     throw e;
   }
-}
+};
 
-async function addItems(orderId, newItems) {
+export const addItems = async (orderId, newItems) => {
   await ensureModifiable(
     orderId,
     ["DRAFT", "PENDING"],
@@ -270,9 +270,9 @@ async function addItems(orderId, newItems) {
     });
   });
   return getOrderById(orderId);
-}
+};
 
-async function updateItem(orderId, itemId, payload) {
+export const updateItem = async (orderId, itemId, payload) => {
   await ensureModifiable(
     orderId,
     ["DRAFT", "PENDING"],
@@ -318,9 +318,9 @@ async function updateItem(orderId, itemId, payload) {
     });
   });
   return getOrderById(orderId);
-}
+};
 
-async function removeItem(orderId, itemId) {
+export const removeItem = async (orderId, itemId) => {
   await ensureModifiable(
     orderId,
     ["DRAFT", "PENDING"],
@@ -357,9 +357,9 @@ async function removeItem(orderId, itemId) {
     });
   });
   return getOrderById(orderId);
-}
+};
 
-async function updateStatus(orderId, payload) {
+export const updateStatus = async (orderId, payload) => {
   const current = await prisma.order.findFirst({
     where: { id: orderId, deleted: false },
     select: { status: true, reservationId: true },
@@ -419,9 +419,9 @@ async function updateStatus(orderId, payload) {
     },
   });
   return getOrderById(orderId);
-}
+};
 
-async function cancelOrder(orderId, reason) {
+export const cancelOrder = async (orderId, reason) => {
   const current = await prisma.order.findFirst({
     where: { id: orderId, deleted: false },
     select: { status: true },
@@ -466,9 +466,9 @@ async function cancelOrder(orderId, reason) {
     },
   });
   return getOrderById(orderId);
-}
+};
 
-async function getAudit(orderId) {
+export const getAudit = async (orderId) => {
   const exists = await prisma.order.findFirst({
     where: { id: orderId, deleted: false },
     select: { id: true },
@@ -483,18 +483,4 @@ async function getAudit(orderId) {
     orderBy: { timestamp: "asc" },
   });
   return { entries };
-}
-
-module.exports = {
-  getOrderById,
-  listOrders,
-  createOrder,
-  patchOrder,
-  deleteOrder,
-  addItems,
-  updateItem,
-  removeItem,
-  updateStatus,
-  cancelOrder,
-  getAudit,
 };

@@ -1,5 +1,5 @@
 // Centralized error handler to map to the Error schema
-function errorHandler(err, req, res, _next) {
+export const errorHandler = (err, req, res, _next) => {
   // Validation errors from express-openapi-validator
   if (err.status && err.errors) {
     return res.status(err.status).json({
@@ -14,13 +14,11 @@ function errorHandler(err, req, res, _next) {
   }
 
   if (err.code === "ECONNREFUSED") {
-    return res
-      .status(503)
-      .json({
-        code: "DB_UNAVAILABLE",
-        message: "Database unavailable",
-        request_id: req.headers["x-request-id"] || undefined,
-      });
+    return res.status(503).json({
+      code: "DB_UNAVAILABLE",
+      message: "Database unavailable",
+      request_id: req.headers["x-request-id"] || undefined,
+    });
   }
 
   const status = err.status || 500;
@@ -32,6 +30,4 @@ function errorHandler(err, req, res, _next) {
     message,
     request_id: req.headers["x-request-id"] || undefined,
   });
-}
-
-module.exports = { errorHandler };
+};

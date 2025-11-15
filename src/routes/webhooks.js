@@ -1,12 +1,16 @@
-const express = require("express");
-const webhooksService = require("../services/webhooks.service");
+import express from "express";
+import {
+  createWebhook,
+  deleteWebhook,
+  listWebhooks,
+} from "../services/webhooks.service.js";
 
 const router = express.Router();
 
 // POST /
 router.post("/", async (req, res, next) => {
   try {
-    const wh = await webhooksService.createWebhook(req.body || {});
+    const wh = await createWebhook(req.body || {});
     return res.status(201).json(wh);
   } catch (e) {
     next(e);
@@ -16,7 +20,7 @@ router.post("/", async (req, res, next) => {
 // GET /
 router.get("/", async (_req, res, next) => {
   try {
-    const result = await webhooksService.listWebhooks();
+    const result = await listWebhooks();
     return res.json(result);
   } catch (e) {
     next(e);
@@ -26,11 +30,11 @@ router.get("/", async (_req, res, next) => {
 // DELETE /{webhookId}
 router.delete("/:webhookId", async (req, res, next) => {
   try {
-    await webhooksService.deleteWebhook(req.params.webhookId);
+    await deleteWebhook(req.params.webhookId);
     return res.sendStatus(204);
   } catch (e) {
     next(e);
   }
 });
 
-module.exports = router;
+export const webhooksRouter = router;

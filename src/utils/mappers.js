@@ -1,10 +1,10 @@
-function toNumber(val) {
+export const toNumber = (val) => {
   if (val === null || val === undefined) return null;
   if (typeof val === "number") return val;
   return Number(val);
-}
+};
 
-function toApiItem(item) {
+export const toApiItem = (item) => {
   return {
     id: item.id,
     sku: item.sku,
@@ -14,9 +14,9 @@ function toApiItem(item) {
     total_price: toNumber(item.totalPrice),
     meta: item.meta || {},
   };
-}
+};
 
-function toApiOrder(order, items) {
+export const toApiOrder = (order, items) => {
   return {
     id: order.id,
     reference: order.reference || undefined,
@@ -40,9 +40,9 @@ function toApiOrder(order, items) {
     created_at: order.createdAt,
     updated_at: order.updatedAt,
   };
-}
+};
 
-function toApiWebhook(wh) {
+export const toApiWebhook = (wh) => {
   return {
     id: wh.id,
     url: wh.url,
@@ -50,6 +50,4 @@ function toApiWebhook(wh) {
     secret: wh.secret,
     created_at: wh.createdAt,
   };
-}
-
-module.exports = { toApiOrder, toApiItem, toApiWebhook, toNumber };
+};

@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "description": "Order Management Service",
   "main": "src/app.js",
+  "type": "module",
   "scripts": {
     "db:push": "prisma db push",
     "prisma:generate": "prisma generate",
+    "postinstall": "prisma generate",
     "start": "prisma db push && node src/app.js",
     "dev": "nodemon src/app.js"
   },

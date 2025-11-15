@@ -1,17 +1,21 @@
-const path = require("path");
-const express = require("express");
-const helmet = require("helmet");
-const cors = require("cors");
-const morgan = require("morgan");
-const YAML = require("yamljs");
-const swaggerUi = require("swagger-ui-express");
-const OpenApiValidator = require("express-openapi-validator");
+import cors from "cors";
+import express from "express";
+import OpenApiValidator from "express-openapi-validator";
+import helmet from "helmet";
+import morgan from "morgan";
+import path from "path";
+import swaggerUi from "swagger-ui-express";
+import { fileURLToPath } from "url";
+import YAML from "yamljs";
+import { internalRouter } from "./routes/internal.js";
+import { ordersRouter } from "./routes/orders.js";
+import { webhooksRouter } from "./routes/webhooks.js";
 
-const ordersRouter = require("./routes/orders");
-const webhooksRouter = require("./routes/webhooks");
-const internalRouter = require("./routes/internal");
-require("dotenv").config();
-const { errorHandler } = require("./middleware/error");
+import "dotenv/config";
+import { errorHandler } from "./middleware/error.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -68,4 +72,4 @@ app.listen(port, () => {
   );
 });
 
-module.exports = app;
+export { app };
