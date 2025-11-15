@@ -26,8 +26,8 @@ const specPath = path.resolve(__dirname, "../order-management-service.yaml");
 const apiSpec = YAML.load(specPath);
 
 // Swagger UI
-app.use("/docs", swaggerUi.serve, swaggerUi.setup(apiSpec));
-app.get("/api-docs.json", (_req, res) => res.json(apiSpec));
+app.use("/api/v1/docs", swaggerUi.serve, swaggerUi.setup(apiSpec));
+app.get("/api/v1/api-docs.json", (_req, res) => res.json(apiSpec));
 
 // OpenAPI request validation
 app.use(
@@ -39,9 +39,9 @@ app.use(
 );
 
 // Routes
-app.use("/", ordersRouter);
-app.use("/", webhooksRouter);
-app.use("/", internalRouter);
+app.use("/api/v1/orders", ordersRouter);
+app.use("/api/v1/webhooks", webhooksRouter);
+app.use("/api/v1/internal", internalRouter);
 
 // 404 for unknown routes
 app.use((req, res) => {
