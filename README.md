@@ -1,6 +1,6 @@
-# Order Management Service (Express + PostgreSQL + Prisma)
+# Order Management Service
 
-Implements the provided OpenAPI spec (`order-management-service.yaml`) with Express.js, PostgreSQL persistence, OpenAPI request validation, and Swagger UI at `/docs`.
+Implements the order management service with Express.js, PostgreSQL persistence, OpenAPI request validation, and Swagger UI at `/docs`.
 
 ## Features
 
