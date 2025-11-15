@@ -8,6 +8,8 @@ const swaggerUi = require("swagger-ui-express");
 const OpenApiValidator = require("express-openapi-validator");
 
 const ordersRouter = require("./routes/orders");
+const webhooksRouter = require("./routes/webhooks");
+const internalRouter = require("./routes/internal");
 require("dotenv").config();
 const { errorHandler } = require("./middleware/error");
 
@@ -38,6 +40,8 @@ app.use(
 
 // Routes
 app.use("/", ordersRouter);
+app.use("/", webhooksRouter);
+app.use("/", internalRouter);
 
 // 404 for unknown routes
 app.use((req, res) => {
