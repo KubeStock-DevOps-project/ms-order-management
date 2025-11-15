@@ -1,11 +1,11 @@
 # Order Management Service
 
-Implements the order management service with Express.js, PostgreSQL persistence, OpenAPI request validation, and Swagger UI at `/docs`.
+Implements the order management service with Express.js, PostgreSQL persistence, OpenAPI request validation, and Swagger UI at `/api/v1/docs`.
 
 ## Features
 
 - Express.js API matching the OpenAPI contract
-- Swagger UI at `/docs` and raw JSON at `/api-docs.json`
+- Swagger UI at `/api/v1/docs` and raw JSON at `/api/v1/api-docs.json`
 - PostgreSQL persistence
 - Prisma ORM (client generated from `prisma/schema.prisma`)
 - OpenAPI request validation (`express-openapi-validator`)
@@ -52,7 +52,7 @@ npm start
 ```
 
 - App: http://localhost:${PORT}
-- Swagger: http://localhost:${PORT}/docs
+- Swagger: http://localhost:${PORT}/api/v1/docs
 
 ### Docker
 
@@ -102,9 +102,3 @@ GitHub Actions workflow `.github/workflows/ci.yml`:
 - Spins up Postgres service
 - Installs deps and runs `prisma generate`
 - Syncs DB schema via `prisma db push`
-
-## Next Steps
-- Move remaining raw SQL in orders routes to Prisma (currently in progress)
-- Add automated tests (supertest) and wire into CI
-- Add response validation once payloads stabilize
-- Add a health endpoint (`/healthz`) that checks DB connectivity
