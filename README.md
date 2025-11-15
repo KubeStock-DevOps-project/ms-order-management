@@ -69,6 +69,25 @@ docker build -t ms-order:latest .
 docker run -p 3000:3000 -e DATABASE_URL=postgresql://postgres:postgres@host.docker.internal:5432/ms_order ms-order:latest
 ```
 
+## Database Creation SQL
+Use the following SQL to create the database and user with appropriate privileges:
+
+```sql
+CREATE DATABASE ms_order;
+
+CREATE USER postgres WITH PASSWORD 'postgres';
+
+GRANT ALL PRIVILEGES ON DATABASE ms_order TO postgres;
+ 
+GRANT ALL ON SCHEMA public TO postgres;
+
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
+
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;
+
+GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO postgres;
+```
+
 ## Development Notes
 
 - Prisma schema: `prisma/schema.prisma`

@@ -1,14 +1,13 @@
 {
   "name": "order-management-service",
   "version": "1.0.0",
-  "description": "Order Management Service (Express.js) implementing the provided OpenAPI spec",
+  "description": "Order Management Service",
   "main": "src/app.js",
   "scripts": {
     "db:push": "prisma db push",
     "prisma:generate": "prisma generate",
     "start": "prisma db push && node src/app.js",
-    "dev": "nodemon src/app.js",
-    "postinstall": "prisma generate"
+    "dev": "nodemon src/app.js"
   },
   "keywords": [
     "express",
@@ -16,7 +15,7 @@
     "openapi",
     "swagger"
   ],
-  "author": "",
+  "author": "Visal Dharmasiri",
   "license": "MIT",
   "dependencies": {
     "express": "^4.19.2",
