@@ -32,9 +32,5 @@ logs/
 build/
 dist/
 
-# Docker
-.dockerignore
-Dockerfile
-
 # Misc
 *.tgz
