@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install all dependencies (including devDependencies for build)
+# Install all dependencies
 RUN npm ci && \
     npm cache clean --force
 
@@ -20,6 +20,9 @@ FROM node:20-alpine
 
 # Set working directory
 WORKDIR /app
+
+# Copy prisma schema
+COPY prisma ./prisma/
 
 # Install production dependencies only
 COPY package*.json ./
