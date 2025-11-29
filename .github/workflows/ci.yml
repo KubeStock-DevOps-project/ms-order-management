@@ -31,6 +31,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ steps.ecr.outputs.region }}
+          role-session-name: GitHubActions-${{ github.run_id }}
 
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
