@@ -12,6 +12,7 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Checkout
@@ -35,7 +36,27 @@ jobs:
       - name: Login to ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build & Push Docker Image
+      - name: Build Docker Image (No Push Yet)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          tags: |
+            ${{ steps.ecr.outputs.url }}:latest
+            ${{ steps.ecr.outputs.url }}:${{ github.ref_name }}
+
+      - name: Trivy Scan Image
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ${{ steps.ecr.outputs.url }}:latest
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push Docker Image (after passing scan)
         uses: docker/build-push-action@v5
         with:
           context: .
