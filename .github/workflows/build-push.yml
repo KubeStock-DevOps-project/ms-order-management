@@ -1,0 +1,100 @@
+# =============================================================================
+# KubeStock - Order Service
+# CI/CD Pipeline: Build & Push to AWS ECR
+# =============================================================================
+# Trunk-based development: Push to ECR on merge to main
+# Uses OIDC for secure, keyless AWS authentication
+# =============================================================================
+
+name: Build & Push to ECR
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-south-1
+  ECR_REPOSITORY: ms-order-management
+  NODE_VERSION: '18'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════
+  # BUILD & PUSH
+  # ═══════════════════════════════════════════════════════════════
+  build-and-push:
+    name: Build & Push to ECR
+    runs-on: ubuntu-latest
+    environment: production
+
+    outputs:
+      image_uri: ${{ steps.build-push.outputs.image_uri }}
+      image_tag: ${{ steps.build-push.outputs.image_tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Extract metadata
+        id: meta
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+          echo "short_sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "timestamp=${TIMESTAMP}" >> $GITHUB_OUTPUT
+          echo "full_sha=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Build and Push Docker image
+        id: build-push
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          IMAGE_URI="${REGISTRY}/${{ env.ECR_REPOSITORY }}"
+          
+          # Build the image
+          docker build \
+            --build-arg BUILD_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") \
+            --build-arg VCS_REF=${{ github.sha }} \
+            --build-arg VERSION=${{ github.ref_name }} \
+            -t ${IMAGE_URI}:${{ steps.meta.outputs.full_sha }} \
+            -t ${IMAGE_URI}:${{ steps.meta.outputs.short_sha }} \
+            -t ${IMAGE_URI}:${{ steps.meta.outputs.timestamp }} \
+            -t ${IMAGE_URI}:latest \
+            .
+          
+          # Push all tags
+          docker push ${IMAGE_URI}:${{ steps.meta.outputs.full_sha }}
+          docker push ${IMAGE_URI}:${{ steps.meta.outputs.short_sha }}
+          docker push ${IMAGE_URI}:${{ steps.meta.outputs.timestamp }}
+          docker push ${IMAGE_URI}:latest
+          
+          echo "image_uri=${IMAGE_URI}" >> $GITHUB_OUTPUT
+          echo "image_tag=${{ steps.meta.outputs.short_sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build summary
+        run: |
+          echo "## 🚀 Build & Push Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Repository** | \`${{ env.ECR_REPOSITORY }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **SHA Tag** | \`${{ steps.meta.outputs.short_sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Full SHA** | \`${{ steps.meta.outputs.full_sha }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Timestamp** | \`${{ steps.meta.outputs.timestamp }}\` |" >> $GITHUB_STEP_SUMMARY
+
+

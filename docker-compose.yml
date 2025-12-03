@@ -1,0 +1,80 @@
+# =============================================================================
+# KubeStock - Order Service
+# Self-contained Docker Compose for Development & Testing
+# =============================================================================
+# Usage:
+#   docker compose up -d          # Start service with database
+#   docker compose down            # Stop all services
+#   docker compose logs -f         # View logs
+#   docker compose down -v         # Stop and remove volumes (clean state)
+# =============================================================================
+
+version: '3.8'
+
+services:
+  # ─────────────────────────────────────────────────────────────────
+  # PostgreSQL Database
+  # ─────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: order-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: order_db
+    volumes:
+      - order_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5435:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────
+  # Order Service
+  # ─────────────────────────────────────────────────────────────────
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: order-service
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3005
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/order_db
+      
+      # Asgardeo Configuration (override in .env for local development)
+      ASGARDEO_ORG_NAME: ${ASGARDEO_ORG_NAME:-your-org}
+      ASGARDEO_CLIENT_ID: ${ASGARDEO_CLIENT_ID:-your-client-id}
+      ASGARDEO_JWKS_URL: ${ASGARDEO_JWKS_URL:-https://api.asgardeo.io/t/your-org/oauth2/jwks}
+      
+      # Service URLs (for inter-service communication)
+      INVENTORY_SERVICE_URL: ${INVENTORY_SERVICE_URL:-http://inventory-service:3003}
+      PRODUCT_CATALOG_SERVICE_URL: ${PRODUCT_CATALOG_SERVICE_URL:-http://product-catalog-service:3002}
+    ports:
+      - "3005:3005"
+    volumes:
+      - ./src:/app/src:ro
+      - ./migrations:/app/migrations:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  order_data:
+    driver: local
+
+networks:
+  default:
+    name: order-network
