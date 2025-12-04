@@ -79,12 +79,12 @@ const authorizeRoles = (...allowedRoles) => {
   };
 };
 
-// Alias for backward compatibility
-const authenticateAsgardeo = [decodeToken, requireAuth];
+// Middleware chain for authentication
+const authenticate = [decodeToken, requireAuth];
 
 module.exports = {
   decodeToken,
   requireAuth,
   authorizeRoles,
-  authenticateAsgardeo
+  authenticate
 };
