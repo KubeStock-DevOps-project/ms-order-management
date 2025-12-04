@@ -64,8 +64,8 @@ app.get("/metrics", async (req, res) => {
   }
 });
 
-// All routes under /api/order prefix for consistent routing
-app.use("/api/order", orderRoutes);
+// Routes - gateway strips /api/order prefix before forwarding
+app.use("/", orderRoutes);
 
 // 404 handler
 app.use((req, res) => {
