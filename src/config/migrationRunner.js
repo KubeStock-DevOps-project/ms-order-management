@@ -25,6 +25,7 @@ async function runMigrations(dbConfig, logger) {
         database: dbConfig.database,
         user: dbConfig.user,
         password: dbConfig.password,
+        ssl: dbConfig.ssl,
       },
       migrationsTable: 'pgmigrations',
       dir: migrationsDir,
